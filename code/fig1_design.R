@@ -41,9 +41,9 @@ ylim <- c(min(sites$latitude)  - 0.0011, max(sites$latitude)  + 0.0011)
 # Widen the window to the row's drawn aspect so the fixed-ratio map fills the
 # figure's full width, aligning panel a with the rows beneath it (rather than
 # being centred with white side margins). 3.0 ~ row-1 cell width : height at
-# heights c(1.00, 0.74, 1.30) over the 178 x 185 mm canvas, net of plot margins
+# heights c(1.00, 0.95, 1.30) over the 178 x 181 mm canvas, net of plot margins
 # (row-1 absolute height is unchanged from the earlier 178 mm square build).
-target_asp <- 3.0
+target_asp <- 3.1
 cur_asp <- diff(xlim) / (asp * diff(ylim))
 if (cur_asp < target_asp) {
   extra <- (target_asp * asp * diff(ylim) - diff(xlim)) / 2
@@ -394,8 +394,13 @@ p_laeq <- ggplot(laeq_pairs, aes(composite, natural)) +
 # gain ~17% height (Prof Zhang's round, 2026-08-20: both panels read cramped).
 # 181 mm is the ceiling: at 185 mm the figure + caption overfilled the main-text
 # page by 5.6 pt and the float escaped to its own page, leaving p8 blank.
-fig <- p_map / (p_scene | p_proto) / (wrap_elements(full = p_mont) | p_laeq) +
-  plot_layout(heights = c(1.00, 0.74, 1.30)) +
+# Row 2 raised again 0.74 -> 0.95 and panel b given 1.2x panel c's width, so the
+# back-to-back seat drawing (the design's showpiece) is the largest element after
+# the map (Prof Kang's round, 2026-08-28); canvas kept at the 181 mm ceiling and
+# the map aspect re-tuned (3.0 -> 3.1) to the shorter row-1 cell.
+fig <- p_map / ((p_scene | p_proto) + plot_layout(widths = c(1.2, 1))) /
+  (wrap_elements(full = p_mont) | p_laeq) +
+  plot_layout(heights = c(1.00, 0.95, 1.30)) +
   plot_annotation(tag_levels = "a") &
   theme(plot.tag = element_text(size = 10, face = "bold", family = "Helvetica"),
         plot.tag.location = "plot", plot.tag.position = c(0, 1),
