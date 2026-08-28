@@ -150,7 +150,7 @@ si_table(cbind(a05a$channel, a05a$chromophore, a05a$n_units, fnum(a05a$est, 3),
   "llccccc", "Channel & Chromophore & $n$ & Estimate & SE & $p$ & $q$",
   paste0("Net exposure-minus-baseline shift per channel (linear mixed model with participant ",
          "random intercept; $\\mu$mol/L). The HbO family (7 tests) is Benjamini--Hochberg ",
-         "corrected; HbR is convergent evidence and uncorrected. No channel survives at ",
+         "corrected; HbR is convergent evidence and uncorrected. No channel is significant at ",
          "$q<0.05$: exposure does not shift oxygenation from its masked baseline on average."),
   "tab:s-activation", file.path(SDIR, "tabS02_activation.tex"))
 
@@ -184,7 +184,7 @@ a07f <- a07 %>% transmute(lv = gsub("_", " ", level), ax = L(axis), ch = channel
 si_table(as.matrix(a07f), "lllccccc",
   "Level & Axis & Channel & $n$ & $\\beta$ & SE & $p$ & $q$",
   paste0("Brain--perception coupling screens (per level, 14 tests: 2 ISO axes $\\times$ 7 HbO ",
-         "channels; BH within level). No coupling survives at any level: appraisal and ",
+         "channels; BH within level). No coupling is significant at any level: appraisal and ",
          "oxygenation shift in parallel without measurable per-pair covariation."),
   "tab:s-brain-perception", file.path(SDIR, "tabS05_brain_perception.tex"), long = TRUE)
 
@@ -195,9 +195,9 @@ a08f <- a08 %>% transmute(lv = gsub("_", " ", level), pr = L(predictor), ch = ch
 si_table(as.matrix(a08f), "lllccccc",
   "Level & Predictor & Channel & $n$ & $\\beta$ & SE & $p$ & $q$",
   paste0("Brain--context and brain--acoustic coupling screens (per level, 21 tests: 3 ",
-         "predictors $\\times$ 7 HbO channels; BH within level). Oxygenation tracks neither ",
-         "measured naturalness, visual complexity nor $L_{\\mathrm{Aeq}}$ continuously at ",
-         "any level."),
+         "predictors $\\times$ 7 HbO channels; BH within level). Oxygenation is not ",
+         "continuously related to measured naturalness, visual complexity or ",
+         "$L_{\\mathrm{Aeq}}$ at any level."),
   "tab:s-brain-context", file.path(SDIR, "tabS06_brain_context.tex"), long = TRUE)
 
 # S7 fixation strand
@@ -221,8 +221,8 @@ a11f <- OUTC("analysis_11_order_and_time", "first_side_moderation.csv")
 si_table(cbind(L(a11f$var), a11f$n, fnum(a11f$side_main, 2), fnum(a11f$inter_est, 2),
                fnum(a11f$inter_se, 2), fp(a11f$inter_p), fp(a11f$q)), "lcccccc",
   "Outcome & $n$ rows & Side main effect & Side $\\times$ order & SE & $p$ & $q$",
-  paste0("Exposure-order moderation of the four headline side contrasts (side $\\times$ ",
-         "first-side interaction, block-level mixed models; BH over 4 tests). No headline ",
+  paste0("Exposure-order moderation of the four main side contrasts (side $\\times$ ",
+         "first-side interaction, block-level mixed models; BH over 4 tests). No main contrast ",
          "depends on which side a session opened with."),
   "tab:s-first-side", file.path(SDIR, "tabS08_first_side.tex"))
 
@@ -308,7 +308,7 @@ si_table(m15, "p{2.9cm}p{4.6cm}cccc", "Family & Test & $n$ & $r$ & $p$ & $q$",
   paste0("Faced-scene content moderators of the appraisal gain. The content screen tests ",
          "the natural-side water, grass and sky proportions against both outcome shifts ",
          "(6 tests, BH); the vegetation-structure family separates ground-plane lawn from ",
-         "trees and other vegetation and re-tests the lawn moderator at the site grain ",
+         "trees and other vegetation and re-tests the lawn moderator at the site level ",
          "(4 tests, BH)."),
   "tab:s-scene-content", file.path(SDIR, "tabS15_scene_content.tex"))
 
@@ -328,9 +328,9 @@ m16 <- rbind(
   cbind("Trait moderation", paste(L(a15t$outcome), "$\\times$", a15t$trait), a15t$n,
         fnum(a15t$est, 2), fnum(a15t$se, 2), fp(a15t$p), fp(a15t$q)))
 si_table(m16, "p{2.3cm}p{3.5cm}ccccc", "Family & Test & $n$ & Estimate & SE & $p$ & $q$",
-  paste0("The person axis. Reliability rows: correlation between the two per-sample effects ",
-         "of the 13 participants measured at two sites (the gate any responder analysis must ",
-         "pass; estimate is $r$). Moderation rows: sex and age moderation of the two headline ",
+  paste0("Person-level reliability and moderation. Reliability rows: correlation between the two per-sample effects ",
+         "of the 13 participants measured at two sites (the precondition for any responder ",
+         "analysis; estimate is $r$). Moderation rows: sex and age moderation of the two main ",
          "shifts (4 tests, BH)."),
   "tab:s-person", file.path(SDIR, "tabS16_person.tex"))
 }
@@ -395,7 +395,7 @@ m18 <- rbind(m18,
         c("frontal HbO", "left $-$ right frontal HbO"), a25c$n,
         fnum(a25c$mean_diff, 2), fnum(a25c$d_z, 2), fp(a25c$p)))
 si_table(m18, "p{2.6cm}p{2.3cm}cccc", "Check & Measure & $n$ & Estimate & $d_z$ & $p$",
-  paste0("Sensitivity battery for every headline estimate. Wilcoxon rows report median ",
+  paste0("Sensitivity analyses for every main estimate. Wilcoxon rows report median ",
          "paired differences; HbT rows the total-haemoglobin convergence on the frontal ",
          "channels; strict rows re-estimate on pairs whose acoustic layer is recorded on ",
          "both sides; leave-one-out rows give the full estimate with its range over ",
@@ -433,11 +433,11 @@ m19 <- rbind(m19,
   cbind("$\\Delta$HbO $-$ $\\Delta$PAQ accuracy, matched 30 pairs", 30,
         fnum(a25d$statistic[3], 3), "--", fp(a25d$p[3])))
 si_table(m19, "p{5.1cm}cccc",
-  "Readout & $n$ pairs & Statistic & Null 95th pct. & Perm. $p$",
-  paste0("Multivariate readouts (leave-one-participant-out Fisher discriminant with ",
+  "Analysis & $n$ pairs & Statistic & Null 95th pct. & Perm. $p$",
+  paste0("Multivariate decoding analyses (leave-one-participant-out Fisher discriminant with ",
          "participant-level folds; 1,000 permutations each, sign-flipping the paired ",
          "differences so the permutation preserves the pairing). Accuracy for ",
-         "classification readouts; out-of-sample correlation for the regression readout. ",
+         "the classification analyses; out-of-sample correlation for the regression analysis. ",
          "The last two rows were added post-review: the $\\Delta$PAQ classifier re-run on ",
          "the same 30 complete-channel pairs as the $\\Delta$HbO classifier, and the ",
          "paired accuracy difference on those pairs (McNemar exact test on discordant ",
@@ -483,8 +483,8 @@ m21 <- cbind(gsub("start_hour x dP_ISO", "start hour $\\\\times$ $\\\\Delta$ISO 
                   "start hour $\\\\times$ $\\\\Delta$frontal HbO", a24$outcome)),
              a24$n_pairs, fnum(a24$r, 2), fp(a24$p), fp(a24$q))
 si_table(m21, "lcccc", "Test & $n$ & $r$ & $p$ & $q$",
-  paste0("Time-of-day bounding of the orientation confound (BH over 2 tests): neither ",
-         "headline shift varies with session start hour across the sampled 08:00--17:00 ",
+  paste0("Time-of-day check on the orientation confound (BH over 2 tests): neither ",
+         "main shift varies with session start hour across the sampled 08:00--17:00 ",
          "range."),
   "tab:s-timeofday", file.path(SDIR, "tabS21_time_of_day.tex"))
 }
@@ -514,7 +514,7 @@ si_table(m22, "lp{4.1cm}ccccc",
          "and unchanged under duplicate-vector exclusion, a first-side covariate, a site ",
          "random intercept and omission of the acoustic control; its parametric ",
          "leave-one-out $p$ reaches 0.19 when the most extreme pair is dropped, while the ",
-         "rank-based estimate survives the same drop ($p = 0.029$)."),
+         "rank-based estimate remains significant after the same drop ($p = 0.029$)."),
   "tab:s-fixation-hbo", file.path(SDIR, "tabS22_fixation_hbo.tex"))
 
 message("All tables written.")
