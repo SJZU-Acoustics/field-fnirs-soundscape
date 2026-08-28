@@ -42,7 +42,7 @@ L <- function(x) {
   ifelse(x %in% names(lab), unname(lab[x]), gsub("_", "\\\\_", x))
 }
 
-fnum <- function(x, d = 3) ifelse(is.na(x), "--", formatC(x, format = "f", digits = d))
+fnum <- function(x, d = 3) ifelse(is.na(x), "--", ifelse(x < 0, paste0("$-$", formatC(abs(x), format = "f", digits = d)), formatC(x, format = "f", digits = d)))
 fp <- function(p) ifelse(is.na(p), "--",
                   ifelse(p < 0.001, "$<$0.001", formatC(p, format = "f", digits = 3)))
 fci <- function(lo, hi, d = 2) sprintf("[%s, %s]", fnum(lo, d), fnum(hi, d))
@@ -56,15 +56,16 @@ rows_to_tabular <- function(mat, align, header) {
 write_frag <- function(txt, path) {cat(txt, file = path); message("wrote ", path)}
 
 si_table <- function(mat, align, header, caption, label, path, long = FALSE,
-                     size = "\\footnotesize") {
+                     size = "\\footnotesize", colsep = "4pt") {
+  cs <- if (is.null(colsep)) "" else paste0("\\setlength{\\tabcolsep}{", colsep, "}\n")
   if (!long) {
-    txt <- paste0("\\begin{table}[htbp]\n\\centering\n", size, "\n\\caption{", caption,
-                  "}\n\\label{", label, "}\n",
+    txt <- paste0("\\begin{table}[htbp]\n\\centering\n", cs, size, "\n\\caption{", caption,
+                  "}\n",
                   rows_to_tabular(mat, align, header), "\\end{table}\n")
   } else {
     body <- apply(mat, 1, paste, collapse = " & ")
-    txt <- paste0("{", size, "\n\\begin{longtable}{", align, "}\n\\caption{", caption,
-                  "}\\label{", label, "}\\\\\n\\toprule\n", header,
+    txt <- paste0("{", cs, size, "\n\\begin{longtable}{", align, "}\n\\caption{", caption,
+                  "}\\\\\n\\toprule\n", header,
                   " \\\\\n\\midrule\n\\endfirsthead\n\\toprule\n", header,
                   " \\\\\n\\midrule\n\\endhead\n\\bottomrule\n\\endfoot\n",
                   paste0(body, " \\\\", collapse = "\n"), "\n\\end{longtable}\n}\n")
@@ -175,7 +176,7 @@ si_table(as.matrix(a04f), "lllcccc",
          "(cross-sectional), between-side (within-sample side difference) and within-side ",
          "(between-block fluctuation). Standardised slopes from mixed models with the design ",
          "random effects."),
-  "tab:s-drivers", file.path(SDIR, "tabS04_driver_screens_full.tex"), long = TRUE, size = "\\scriptsize")
+  "tab:s-drivers", file.path(SDIR, "tabS04_driver_screens_full.tex"), long = TRUE, size = "\\scriptsize", colsep = "2pt")
 
 # S5 brain-perception coupling screens
 a07 <- OUTC("analysis_07_brain_perception_coupling", "coupling_screens.csv")
@@ -278,7 +279,7 @@ si_table(cbind(L(a18$predictor), L(a18$outcome), a18$n_rows, fnum(a18$wb_main_es
          "$\\times$ 2 outcomes; BH). The heard$\\rightarrow$appraisal slopes are identical ",
          "on the two sides: visual context moves the appraisal intercept and leaves hearing ",
          "slopes untouched."),
-  "tab:s-crossmodal", file.path(SDIR, "tabS13_crossmodal.tex"), size = "\\scriptsize")
+  "tab:s-crossmodal", file.path(SDIR, "tabS13_crossmodal.tex"), size = "\\scriptsize", colsep = "3pt")
 
 # S14 element-class screen
 a14 <- OUTC("analysis_14_element_class_screen", "element_class_screen.csv")
