@@ -22,6 +22,22 @@ COL_PARK  <- "#DCE9D5"
 COL_BUILT <- "#DBDBDB"
 COL_ROAD  <- "#9A9A9A"
 
+# Vertical layout of row 2 (panels b and c share the row): panel b's y window,
+# and panel c's element rows and window, set so that c's drawn extent matches
+# b's in position and height (Prof Zhang's round, 2026-08-28).
+# Panel b: the window's top is raised and its bottom trimmed (-0.90..3.25 ->
+# -0.45..3.45; the same 3.9-unit span is drawn ~7% larger), so the roles-swap
+# arc and its label fit above the heads and the dead band under the footer
+# text goes. Panel c: drawn under coord_fixed like b, so patchwork gives it the
+# same full-cell panel height (a free panel loses the 13-pt margins, ~4 mm,
+# and sat ~2 mm lower than b); its window is then set so the N/C letters top
+# out level with b's side headers and lane B's foot lands level with b's
+# footer text (measured on the 600-dpi render, within 0.5 mm).
+SCENE_Y0 <- -0.45; SCENE_Y1 <- 3.45
+PROTO_Y  <- list(strip = c(3.15, 3.85), unit = c(1.15, 1.95),
+                 laneA = c(0.60, 1.02), laneB = c(0.10, 0.52), lim = c(-0.07, 4.39),
+                 ratio = 2.35)
+
 ## ---- (a) site map with its geographic context --------------------------------
 n_samples_site <- samples %>% filter(side == "natural") %>% count(site) %>%
   mutate(site = as.integer(as.character(site)))
@@ -43,7 +59,7 @@ ylim <- c(min(sites$latitude)  - 0.0011, max(sites$latitude)  + 0.0011)
 # being centred with white side margins). 3.0 ~ row-1 cell width : height at
 # heights c(1.00, 0.95, 1.30) over the 178 x 181 mm canvas, net of plot margins
 # (row-1 absolute height is unchanged from the earlier 178 mm square build).
-target_asp <- 3.1
+target_asp <- 3.5                     # 3.1 at 181 mm; re-tuned for the 160 mm canvas
 cur_asp <- diff(xlim) / (asp * diff(ylim))
 if (cur_asp < target_asp) {
   extra <- (target_asp * asp * diff(ylim) - diff(xlim)) / 2
@@ -122,9 +138,14 @@ arc <- function(x0, y0, r, a0, a1, id, n = 40) {
   tibble(th = seq(a0, a1, length.out = n) * pi / 180) %>%
     mutate(x = x0 + r * cos(th), y = y0 + r * sin(th), id = id)
 }
+# annular sector between r_in and r_out from a0 to a1 (degrees), as a polygon
+band <- function(x0, y0, r_in, r_out, a0, a1, id, n = 40) {
+  bind_rows(arc(x0, y0, r_out, a0, a1, id, n), arc(x0, y0, r_in, a1, a0, id, n))
+}
 # A seated person in section: d = -1 faces left (natural), +1 faces right.
 # Shoulders lean back onto the chair, so the two bodies read as back to back.
-S <- 1.22                                             # body scale
+S   <- 1.22                                           # body scale
+R_H <- 0.165                                          # head radius (drawn, so the headgear can hug it)
 person_limbs <- function(hx, d, id) {
   hip <- c(hx, GY + 0.52 * S); knee <- c(hx + 0.40 * S * d, GY + 0.52 * S)
   foot <- c(hx + 0.44 * S * d, GY + 0.03); sho <- c(hx - 0.06 * S * d, GY + 1.10 * S)
@@ -135,19 +156,45 @@ person_limbs <- function(hx, d, id) {
          xend = c(sho[1], knee[1], foot[1], hand[1]),
          yend = c(sho[2], knee[2], foot[2], hand[2]))
 }
-person_head <- function(hx, d) tibble(x = hx + 0.02 * S * d, y = GY + 1.32 * S)
+person_head <- function(hx, d) c(hx + 0.02 * S * d, GY + 1.32 * S)   # head centre
 chair_path <- function(hx, d, id) tibble(
   id = id,
   x = c(hx - 0.20 * S * d, hx - 0.20 * S * d, hx + 0.42 * S * d, hx + 0.42 * S * d),
   y = c(GY + 1.02 * S,     GY + 0.46 * S,     GY + 0.46 * S,     GY))
 
 A_X <- -0.30; B_X <- 0.30
+hA <- person_head(A_X, -1); hB <- person_head(B_X, 1)
 limbs <- bind_rows(person_limbs(A_X, -1, "A"), person_limbs(B_X, 1, "B"))
+heads <- bind_rows(circle(hA[1], hA[2], R_H, "A"), circle(hB[1], hB[2], R_H, "B"))
 chairs <- bind_rows(chair_path(A_X, -1, "A"), chair_path(B_X, 1, "B"),
                     tibble(id = "Aleg", x = c(A_X + 0.20 * S, A_X + 0.20 * S),
                            y = c(GY + 0.46 * S, GY)),
                     tibble(id = "Bleg", x = c(B_X - 0.20 * S, B_X - 0.20 * S),
                            y = c(GY + 0.46 * S, GY)))
+# Person colours: A (the measured partner) in the natural-side green, B in grey
+# (Prof Zhang's round, 2026-08-28: B is not a "composite" person).
+COL_A <- COL_NATURAL; COL_B <- "grey55"
+# A's headgear — what the Methods list: the fNIRS cap (a band hugging the scalp
+# from brow to nape, optodes as light dots along it, in the montage's source
+# colour so it ties to panel d) and the eye-tracking glasses (a lens before the
+# open eye with a temple arm back to the ear).
+CAP_COL <- "#7A1B45"
+cap     <- band(hA[1], hA[2], R_H - 0.005, R_H + 0.080, -10, 150, "cap")
+optodes <- tibble(th = seq(5, 137, length.out = 5) * pi / 180) %>%
+  mutate(x = hA[1] + (R_H + 0.0375) * cos(th), y = hA[2] + (R_H + 0.0375) * sin(th))
+eye_A   <- tibble(x = hA[1] - R_H + 0.055, y = hA[2])
+lens    <- tibble(xmin = hA[1] - R_H - 0.10, xmax = hA[1] - R_H - 0.01,
+                  ymin = hA[2] - 0.065, ymax = hA[2] + 0.07)
+temple  <- tibble(x = hA[1] - R_H - 0.01, xend = hA[1],
+                  y = hA[2] + 0.06, yend = hA[2] + 0.06)
+# B's headgear — the binaural headset (a thin band hugging the crown and an
+# ear-cup) and a lowered eyelid: B keeps the eyes closed.
+hband   <- arc(hB[1], hB[2], R_H + 0.012, -5, 185, "band")
+earcup  <- tibble(x = hB[1] - 0.035, y = hB[2] - 0.02)
+lid     <- arc(hB[1] + R_H - 0.065, hB[2] + 0.045, 0.05, 200, 340, "lid")
+# The pair swap roles after the six blocks: a two-headed arc between the heads.
+swap    <- arc(0, 1.918, 0.572, 50.6, 129.4, "swap", n = 60)
+
 canopies <- bind_rows(circle(-2.62, GY + 1.62, 0.50, "t1"), circle(-2.18, GY + 1.24, 0.34, "t2"),
                       circle(-1.62, GY + 1.42, 0.42, "t3"), circle(-1.18, GY + 1.06, 0.28, "t4"))
 trunks <- tibble(x = c(-2.62, -2.18, -1.62, -1.18), xend = c(-2.62, -2.18, -1.62, -1.18),
@@ -167,8 +214,8 @@ canopies_c <- bind_rows(circle(1.06, GY + 0.96, 0.24, "c1"),
 trunks_c <- tibble(x = c(1.06, 1.52), xend = c(1.06, 1.52),
                    y = GY, yend = c(GY + 0.78, GY + 0.66))
 p_scene <- ggplot() +
-  annotate("rect", xmin = -3.35, xmax = 0, ymin = GY, ymax = 3.25, fill = COL_PARK, alpha = 0.55) +
-  annotate("rect", xmin = 0, xmax = 3.35, ymin = GY, ymax = 3.25, fill = COL_BUILT, alpha = 0.45) +
+  annotate("rect", xmin = -3.35, xmax = 0, ymin = GY, ymax = SCENE_Y1, fill = COL_PARK, alpha = 0.55) +
+  annotate("rect", xmin = 0, xmax = 3.35, ymin = GY, ymax = SCENE_Y1, fill = COL_BUILT, alpha = 0.45) +
   annotate("rect", xmin = -3.35, xmax = -2.10, ymin = GY, ymax = GY + 0.26, fill = COL_WATER) +
   geom_polygon(data = canopies, aes(x, y, group = id), fill = "#8FBF8A", colour = NA) +
   geom_segment(data = trunks, aes(x, y, xend = xend, yend = yend),
@@ -184,42 +231,49 @@ p_scene <- ggplot() +
   geom_path(data = chairs, aes(x, y, group = id), colour = "grey35", linewidth = 0.5) +
   geom_segment(data = limbs, aes(x, y, xend = xend, yend = yend, colour = id),
                linewidth = 1.5, lineend = "round") +
-  geom_point(data = mutate(person_head(A_X, -1), id = "A"), aes(x, y, colour = id), size = 3.1) +
-  geom_point(data = mutate(person_head(B_X, 1), id = "B"), aes(x, y, colour = id), size = 3.1) +
-  # A wears the cap and the eye-tracker; B wears the recorder and keeps eyes shut.
-  # The cap is the montage's source colour (panel d), not A's body green — on the
-  # green head a green cap disappears.
-  geom_path(data = arc(A_X - 0.02 * S, GY + 1.32 * S, 0.245, 20, 210, "cap"), aes(x, y),
-            colour = "#7A1B45", linewidth = 1.2) +
-  annotate("segment", x = A_X - 0.02 * S - 0.24, xend = A_X - 0.02 * S - 0.24,
-           y = GY + 1.32 * S - 0.09, yend = GY + 1.32 * S + 0.09,
-           colour = "grey20", linewidth = 0.8) +
-  geom_path(data = arc(B_X + 0.02 * S, GY + 1.32 * S, 0.235, -15, 195, "band"), aes(x, y),
-            colour = "grey30", linewidth = 0.9) +
-  annotate("point", x = B_X + 0.02 * S, y = GY + 1.32 * S + 0.235, size = 1.2, colour = "grey30") +
+  geom_polygon(data = heads, aes(x, y, group = id, fill = id), colour = NA) +
+  # A: open eye behind the eye-tracking glasses (temple arm drawn before the
+  # cap, so it runs under the cap's brow edge), fNIRS cap with optodes
+  geom_point(data = eye_A, aes(x, y), size = 0.65, colour = "grey15") +
+  geom_segment(data = temple, aes(x = x, y = y, xend = xend, yend = yend),
+               colour = "grey15", linewidth = 0.5) +
+  geom_rect(data = lens, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = alpha("white", 0.65), colour = "grey15", linewidth = 0.45) +
+  geom_polygon(data = cap, aes(x, y), fill = CAP_COL, colour = NA) +
+  geom_point(data = optodes, aes(x, y), size = 0.42, colour = "white") +
+  # B: binaural headset (band hugging the crown, ear-cup), eyes closed
+  geom_path(data = hband, aes(x, y), colour = "grey20", linewidth = 0.6) +
+  geom_point(data = earcup, aes(x, y), size = 1.6, colour = "grey15") +
+  geom_path(data = lid, aes(x, y), colour = "grey10", linewidth = 0.55) +
+  # roles swap after the six blocks (three per side)
+  geom_path(data = swap, aes(x, y), colour = "grey35", linewidth = 0.45,
+            arrow = arrow(ends = "both", length = unit(0.10, "cm"), type = "closed")) +
+  annotate("text", x = 0, y = 2.64, size = 2.5, family = "Helvetica",
+           colour = "grey30", label = "swap roles") +
   # what each faces
-  annotate("segment", x = A_X - 0.34, xend = -0.95, y = GY + 1.32 * S, yend = GY + 1.32 * S,
+  annotate("segment", x = A_X - 0.34, xend = -0.95, y = hA[2], yend = hA[2],
            arrow = arrow(length = unit(0.11, "cm"), type = "closed"),
            linewidth = 0.5, colour = COL_NATURAL) +
-  annotate("segment", x = B_X + 0.34, xend = 0.95, y = GY + 1.32 * S, yend = GY + 1.32 * S,
+  annotate("segment", x = B_X + 0.34, xend = 0.95, y = hB[2], yend = hB[2],
            arrow = arrow(length = unit(0.11, "cm"), type = "closed"),
            linewidth = 0.5, colour = COL_COMPOSITE, linetype = "22") +
   # header and footer text kept clear of the drawn objects (canopy tops 2.54,
   # building top 2.57; feet at GY + 0.03) — Prof Zhang's round, 2026-08-20
-  annotate("text", x = -3.28, y = 3.02, hjust = 0, size = 2.8, family = "Helvetica",
+  annotate("text", x = -3.28, y = 3.22, hjust = 0, size = 2.8, family = "Helvetica",
            fontface = "bold", colour = "grey20", label = "natural side") +
-  annotate("text", x = 3.28, y = 3.02, hjust = 1, size = 2.8, family = "Helvetica",
+  annotate("text", x = 3.28, y = 3.22, hjust = 1, size = 2.8, family = "Helvetica",
            fontface = "bold", colour = "grey20", label = "composite side") +
-  annotate("text", x = 0, y = 2.78, size = 2.5, family = "Helvetica", fontface = "italic",
+  annotate("text", x = 0, y = 2.92, size = 2.5, family = "Helvetica", fontface = "italic",
            colour = "grey30", label = "one seat, one sound field") +
   annotate("text", x = -0.72, y = GY - 0.46, hjust = 1, size = 2.7, family = "Helvetica",
            lineheight = 0.9, label = "A  faces the scene\nfNIRS + eye-tracker") +
   annotate("text", x = 0.72, y = GY - 0.46, hjust = 0, size = 2.7, family = "Helvetica",
            lineheight = 0.9, label = "B  eyes closed\nbinaural recorder") +
-  scale_colour_manual(values = c(A = COL_NATURAL, B = COL_COMPOSITE), guide = "none") +
+  scale_colour_manual(values = c(A = COL_A, B = COL_B), guide = "none") +
+  scale_fill_manual(values = c(A = COL_A, B = COL_B), guide = "none") +
   # clip off: A's footer line starts ~0.1 unit left of the x window at this
   # panel scale (fixed-pt text, smaller mm-per-unit) and must not lose its "f"
-  coord_fixed(ratio = 1, xlim = c(-3.35, 3.35), ylim = c(-0.90, 3.25),
+  coord_fixed(ratio = 1, xlim = c(-3.35, 3.35), ylim = c(SCENE_Y0, SCENE_Y1),
               expand = FALSE, clip = "off") +
   theme_void(base_family = "Helvetica") +
   theme(plot.background = element_rect(fill = "white", colour = NA))
@@ -228,6 +282,22 @@ p_scene <- ggplot() +
 # Each overview block carries the same four segments as the magnified block
 # below it — baseline, exposure, ratings, and the 120-s transition to the next
 # block (drawn after blocks 1–5; no transition follows the sixth).
+# Colour logic (Prof Zhang's round, 2026-08-28): each side's blocks are tints of
+# its own colour — light for the masked baseline and the ratings, medium for the
+# exposure — natural green, composite yellow; transitions are white gaps. The
+# partners' lanes below are framed: A's in light green over the whole span it
+# covers (unfilled through the ratings, where nothing is recorded but A rates),
+# B's in light grey.
+tint <- function(col, f) {
+  m <- grDevices::col2rgb(col)
+  grDevices::rgb(255 - f * (255 - m[1, ]), 255 - f * (255 - m[2, ]), 255 - f * (255 - m[3, ]),
+                 maxColorValue = 255)
+}
+N_LIGHT <- tint(COL_NATURAL, 0.30);   N_MID <- tint(COL_NATURAL, 0.72)
+C_LIGHT <- tint(COL_COMPOSITE, 0.30); C_MID <- tint(COL_COMPOSITE, 0.72)
+LANE_A_FILL <- tint(COL_NATURAL, 0.16); LANE_A_LINE <- tint(COL_NATURAL, 0.85)
+LANE_B_FILL <- "grey92";                LANE_B_LINE <- "grey45"
+LANE_LW <- 0.45 * 0.70                                 # 70% of the earlier outline
 unit_w <- 2.85; base_w <- 0.9; expo_w <- 0.9; quest_w <- 0.6; gap_w <- 0.45
 units <- tibble(idx = 1:6, side = rep(c("Natural side", "Composite side"), 3)) %>%
   mutate(x0 = (idx - 1) * unit_w)
@@ -239,24 +309,24 @@ rects <- units %>%
             w  = c(base_w, expo_w, quest_w, gap_w))) %>%
   ungroup() %>%
   filter(!(part == "gap" & idx == 6)) %>%
-  # Transitions are genuine gaps, so they are white; the ratings segment is the
-  # activity and carries the light grey (Prof Zhang's round, 2026-08-20).
-  mutate(fill = case_when(part == "baseline" ~ "grey80",
-                          part == "questionnaire" ~ "grey90",
-                          part == "gap" ~ "white",
-                          side == "Natural side" ~ COL_NATURAL,
-                          TRUE ~ COL_COMPOSITE))
-STRIP_Y <- c(3.15, 3.85)                                   # six-block overview
-UNIT_Y  <- c(1.15, 1.95)                                   # one block, expanded
+  mutate(fill = case_when(part == "gap" ~ "white",
+                          part == "exposure" & side == "Natural side" ~ N_MID,
+                          part == "exposure" ~ C_MID,
+                          side == "Natural side" ~ N_LIGHT,
+                          TRUE ~ C_LIGHT))
+STRIP_Y <- PROTO_Y$strip                                   # six-block overview
+UNIT_Y  <- PROTO_Y$unit                                    # one block, expanded
+MAG_X1 <- 16.2                       # transition cell widened 15.6 -> 16.2: "next block" no longer crosses the divider
 mag <- tibble(part = c("baseline", "exposure", "ratings", "gap"),
-              x0 = c(0, 5.0, 10.0, 12.9), x1 = c(5.0, 10.0, 12.9, 15.6),
+              x0 = c(0, 5.0, 10.0, 12.9), x1 = c(5.0, 10.0, 12.9, MAG_X1),
               y0 = UNIT_Y[1], y1 = UNIT_Y[2],
-              fill = c("grey80", "white", "grey90", "white"),
+              fill = c(N_LIGHT, N_MID, N_LIGHT, "white"),
               label = c("masked\nbaseline 60 s", "exposure\n60 s", "block\nratings",
                         "120 s to\nnext block"))
-lanes <- tibble(y0 = c(0.60, 0.10), y1 = c(1.02, 0.52),
+lanes <- tibble(y0 = c(PROTO_Y$laneA[1], PROTO_Y$laneB[1]),
+                y1 = c(PROTO_Y$laneA[2], PROTO_Y$laneB[2]),
                 x0 = c(0, 5.0), x1 = c(10.0, 10.0),
-                fill = c("#DCE6F0", "#D9E7E2"),
+                fill = c(LANE_A_FILL, LANE_B_FILL),
                 label = c("A   fNIRS + eye-tracking", "B   binaural recording"))
 p_proto <- ggplot() +
   geom_rect(data = rects, aes(xmin = x0, xmax = x0 + w, ymin = STRIP_Y[1], ymax = STRIP_Y[2],
@@ -268,7 +338,7 @@ p_proto <- ggplot() +
   # (the six-block / role-swap sentence lives in the caption, not the panel)
   annotate("segment", x = 0, xend = 0, y = STRIP_Y[1], yend = UNIT_Y[2],
            linetype = "dashed", linewidth = 0.25, colour = "grey45") +
-  annotate("segment", x = base_w + expo_w + quest_w + gap_w, xend = 15.6,
+  annotate("segment", x = base_w + expo_w + quest_w + gap_w, xend = MAG_X1,
            y = STRIP_Y[1], yend = UNIT_Y[2],
            linetype = "dashed", linewidth = 0.25, colour = "grey45") +
   geom_rect(data = mag, aes(xmin = x0, xmax = x1, ymin = y0, ymax = y1, fill = I(fill)),
@@ -277,14 +347,16 @@ p_proto <- ggplot() +
             size = 2.7, family = "Helvetica", lineheight = 0.85) +
   geom_rect(data = lanes, aes(xmin = x0, xmax = x1, ymin = y0, ymax = y1, fill = I(fill)),
             colour = NA) +
-  # A's lane continues, hollow, through the block-ratings segment: no recording
-  # runs there, but A is the one giving the ratings (Prof Zhang, 2026-08-20).
-  annotate("rect", xmin = 10.0, xmax = 12.9, ymin = 0.60, ymax = 1.02,
-           fill = NA, colour = "#8FA9C6", linewidth = 0.45) +
+  # A's frame spans the whole period A is engaged (baseline to the end of the
+  # block ratings); the ratings part stays unfilled (Prof Zhang, 2026-08-20/28).
+  annotate("rect", xmin = 0, xmax = 12.9, ymin = lanes$y0[1], ymax = lanes$y1[1],
+           fill = NA, colour = LANE_A_LINE, linewidth = LANE_LW) +
+  annotate("rect", xmin = 5.0, xmax = 10.0, ymin = lanes$y0[2], ymax = lanes$y1[2],
+           fill = NA, colour = LANE_B_LINE, linewidth = LANE_LW) +
   geom_text(data = lanes, aes(x = x0 + 0.18, y = (y0 + y1) / 2, label = label),
             size = 2.7, family = "Helvetica", hjust = 0) +
-  scale_x_continuous(limits = c(-0.25, 16.90)) +
-  scale_y_continuous(limits = c(-0.05, 4.30)) +
+  coord_fixed(ratio = PROTO_Y$ratio, xlim = c(-0.25, 16.90), ylim = PROTO_Y$lim,
+              expand = FALSE, clip = "off") +
   theme_void(base_family = "Helvetica") +
   theme(plot.background = element_rect(fill = "white", colour = NA))
 
@@ -405,7 +477,11 @@ fig <- p_map / ((p_scene | p_proto) + plot_layout(widths = c(1.2, 1))) /
   theme(plot.tag = element_text(size = 10, face = "bold", family = "Helvetica"),
         plot.tag.location = "plot", plot.tag.position = c(0, 1),
         plot.margin = margin(t = 11, r = 3, b = 2, l = 11))
-save_fig(fig, file.path(FIGDIR, "fig1_design.png"), 178, 181)
+# Canvas 181 -> 160 mm (2026-08-29): the caption grew by three lines to state
+# the new colour and headgear mappings, and the figure page had no slack — at
+# 181 mm the float overflowed by 42-53 pt (168 mm: still 6-17 pt) and escaped
+# to its own extra page; 160 mm fits with a few points to spare.
+save_fig(fig, file.path(FIGDIR, "fig1_design.png"), 178, 160)
 
 write_csv(sites, file.path(LOCKDIR, "fig1a_sites.csv"))
 write_csv(basemap, file.path(LOCKDIR, "fig1a_basemap_osm.csv"))
