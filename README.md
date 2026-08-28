@@ -1,6 +1,6 @@
 # field-fnirs-soundscape
 
-R code for reproducing the statistical analyses, figures and tables for the manuscript "Visual natural context recolours soundscape appraisal and lowers frontal oxygenation in an urban park".
+R code for reproducing the statistical analyses, figures and tables for the manuscript "Visual natural context improves soundscape appraisal and lowers frontal oxygenation in an urban park".
 
 ## Requirements
 
