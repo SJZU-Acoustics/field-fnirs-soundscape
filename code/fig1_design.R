@@ -21,6 +21,16 @@ COL_WATER <- "#C9DCE8"
 COL_PARK  <- "#DCE9D5"
 COL_BUILT <- "#DBDBDB"
 COL_ROAD  <- "#9A9A9A"
+tint <- function(col, f) {                            # col blended f-strength over white
+  m <- grDevices::col2rgb(col)
+  grDevices::rgb(255 - f * (255 - m[1, ]), 255 - f * (255 - m[2, ]), 255 - f * (255 - m[3, ]),
+                 maxColorValue = 255)
+}
+# The two faced sides' backgrounds in panel b, reused as the pale block colour of
+# each side in panel c (Prof Zhang's round 2, 2026-08-29): natural pale green,
+# composite a faint yellow (was light grey).
+BG_NAT  <- tint(COL_PARK, 0.55)
+BG_COMP <- tint(COL_COMPOSITE, 0.14)
 
 # Vertical layout of row 2 (panels b and c share the row): panel b's y window,
 # and panel c's element rows and window, set so that c's drawn extent matches
@@ -171,27 +181,29 @@ chairs <- bind_rows(chair_path(A_X, -1, "A"), chair_path(B_X, 1, "B"),
                            y = c(GY + 0.46 * S, GY)),
                     tibble(id = "Bleg", x = c(B_X - 0.20 * S, B_X - 0.20 * S),
                            y = c(GY + 0.46 * S, GY)))
-# Person colours: A (the measured partner) in the natural-side green, B in grey
-# (Prof Zhang's round, 2026-08-28: B is not a "composite" person).
-COL_A <- COL_NATURAL; COL_B <- "grey55"
-# A's headgear — what the Methods list: the fNIRS cap (a band hugging the scalp
-# from brow to nape, optodes as light dots along it, in the montage's source
-# colour so it ties to panel d) and the eye-tracking glasses (a lens before the
+# Person colours (Prof Zhang's rounds, 2026-08-28/29): A, the measured partner,
+# a white figure with a black edge; B grey. Every instrument is drawn in black.
+COL_A <- "white"; COL_B <- "grey55"; EDGE_LW <- 0.55
+# A's headgear — what the Methods list: the fNIRS cap as one black line hugging
+# the scalp from brow to nape, and the eye-tracking glasses (a lens before the
 # open eye with a temple arm back to the ear).
-CAP_COL <- "#7A1B45"
-cap     <- band(hA[1], hA[2], R_H - 0.005, R_H + 0.080, -10, 150, "cap")
-optodes <- tibble(th = seq(5, 137, length.out = 5) * pi / 180) %>%
-  mutate(x = hA[1] + (R_H + 0.0375) * cos(th), y = hA[2] + (R_H + 0.0375) * sin(th))
+cap     <- arc(hA[1], hA[2], R_H + 0.065, -10, 150, "cap")   # a hair off the head's own outline
 eye_A   <- tibble(x = hA[1] - R_H + 0.055, y = hA[2])
 lens    <- tibble(xmin = hA[1] - R_H - 0.10, xmax = hA[1] - R_H - 0.01,
                   ymin = hA[2] - 0.065, ymax = hA[2] + 0.07)
 temple  <- tibble(x = hA[1] - R_H - 0.01, xend = hA[1],
                   y = hA[2] + 0.06, yend = hA[2] + 0.06)
-# B's headgear — the binaural headset (a thin band hugging the crown and an
-# ear-cup) and a lowered eyelid: B keeps the eyes closed.
-hband   <- arc(hB[1], hB[2], R_H + 0.012, -5, 185, "band")
-earcup  <- tibble(x = hB[1] - 0.035, y = hB[2] - 0.02)
-lid     <- arc(hB[1] + R_H - 0.065, hB[2] + 0.045, 0.05, 200, 340, "lid")
+# B — eyes closed (a lowered eyelid); the binaural recording as an earpiece at
+# the ear, a cable hanging down the front, and the small black recorder on the
+# lap by B's hand (no band over the head, no gaze line).
+earpiece <- tibble(x = hB[1] - 0.02, y = hB[2] - 0.02)
+lid      <- arc(hB[1] + R_H - 0.065, hB[2] + 0.045, 0.05, 200, 340, "lid")
+recorder <- tibble(xmin = B_X + 0.26 * S, xmax = B_X + 0.38 * S,
+                   ymin = GY + 0.53 * S, ymax = GY + 0.61 * S)
+cable    <- tibble(x = c(earpiece$x, hB[1] - 0.01, hB[1] + 0.01, hB[1] + 0.07, hB[1] + 0.17,
+                         hB[1] + 0.27, B_X + 0.30 * S),
+                   y = c(earpiece$y, hB[2] - 0.12, hB[2] - 0.28, hB[2] - 0.46, hB[2] - 0.62,
+                         hB[2] - 0.74, GY + 0.61 * S))
 # The pair swap roles after the six blocks: a two-headed arc between the heads.
 swap    <- arc(0, 1.918, 0.572, 50.6, 129.4, "swap", n = 60)
 
@@ -214,8 +226,8 @@ canopies_c <- bind_rows(circle(1.06, GY + 0.96, 0.24, "c1"),
 trunks_c <- tibble(x = c(1.06, 1.52), xend = c(1.06, 1.52),
                    y = GY, yend = c(GY + 0.78, GY + 0.66))
 p_scene <- ggplot() +
-  annotate("rect", xmin = -3.35, xmax = 0, ymin = GY, ymax = SCENE_Y1, fill = COL_PARK, alpha = 0.55) +
-  annotate("rect", xmin = 0, xmax = 3.35, ymin = GY, ymax = SCENE_Y1, fill = COL_BUILT, alpha = 0.45) +
+  annotate("rect", xmin = -3.35, xmax = 0, ymin = GY, ymax = SCENE_Y1, fill = BG_NAT) +
+  annotate("rect", xmin = 0, xmax = 3.35, ymin = GY, ymax = SCENE_Y1, fill = BG_COMP) +
   annotate("rect", xmin = -3.35, xmax = -2.10, ymin = GY, ymax = GY + 0.26, fill = COL_WATER) +
   geom_polygon(data = canopies, aes(x, y, group = id), fill = "#8FBF8A", colour = NA) +
   geom_segment(data = trunks, aes(x, y, xend = xend, yend = yend),
@@ -229,22 +241,27 @@ p_scene <- ggplot() +
   geom_polygon(data = canopies_c, aes(x, y, group = id), fill = "#8FBF8A", colour = NA) +
   annotate("segment", x = -3.35, xend = 3.35, y = GY, yend = GY, linewidth = 0.5, colour = "grey25") +
   geom_path(data = chairs, aes(x, y, group = id), colour = "grey35", linewidth = 0.5) +
+  # A's black edge: a slightly wider black stroke under the white limbs
+  geom_segment(data = filter(limbs, id == "A"), aes(x, y, xend = xend, yend = yend),
+               colour = "black", linewidth = 1.5 + EDGE_LW, lineend = "round") +
   geom_segment(data = limbs, aes(x, y, xend = xend, yend = yend, colour = id),
                linewidth = 1.5, lineend = "round") +
-  geom_polygon(data = heads, aes(x, y, group = id, fill = id), colour = NA) +
-  # A: open eye behind the eye-tracking glasses (temple arm drawn before the
-  # cap, so it runs under the cap's brow edge), fNIRS cap with optodes
-  geom_point(data = eye_A, aes(x, y), size = 0.65, colour = "grey15") +
+  geom_polygon(data = filter(heads, id == "B"), aes(x, y), fill = COL_B, colour = NA) +
+  geom_polygon(data = filter(heads, id == "A"), aes(x, y), fill = COL_A, colour = "black",
+               linewidth = 0.5) +
+  # A: open eye behind the eye-tracking glasses, the fNIRS cap as one black line
+  geom_point(data = eye_A, aes(x, y), size = 0.65, colour = "black") +
   geom_segment(data = temple, aes(x = x, y = y, xend = xend, yend = yend),
-               colour = "grey15", linewidth = 0.5) +
+               colour = "black", linewidth = 0.5) +
   geom_rect(data = lens, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-            fill = alpha("white", 0.65), colour = "grey15", linewidth = 0.45) +
-  geom_polygon(data = cap, aes(x, y), fill = CAP_COL, colour = NA) +
-  geom_point(data = optodes, aes(x, y), size = 0.42, colour = "white") +
-  # B: binaural headset (band hugging the crown, ear-cup), eyes closed
-  geom_path(data = hband, aes(x, y), colour = "grey20", linewidth = 0.6) +
-  geom_point(data = earcup, aes(x, y), size = 1.6, colour = "grey15") +
+            fill = alpha("white", 0.65), colour = "black", linewidth = 0.45) +
+  geom_path(data = cap, aes(x, y), colour = "black", linewidth = 0.7) +
+  # B: eyes closed; earpiece, cable and recorder in black
   geom_path(data = lid, aes(x, y), colour = "grey10", linewidth = 0.55) +
+  geom_path(data = cable, aes(x, y), colour = "black", linewidth = 0.45) +
+  geom_point(data = earpiece, aes(x, y), size = 1.2, colour = "black") +
+  geom_rect(data = recorder, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "black", colour = NA) +
   # roles swap after the six blocks (three per side)
   geom_path(data = swap, aes(x, y), colour = "grey35", linewidth = 0.45,
             arrow = arrow(ends = "both", length = unit(0.10, "cm"), type = "closed")) +
@@ -254,9 +271,6 @@ p_scene <- ggplot() +
   annotate("segment", x = A_X - 0.34, xend = -0.95, y = hA[2], yend = hA[2],
            arrow = arrow(length = unit(0.11, "cm"), type = "closed"),
            linewidth = 0.5, colour = COL_NATURAL) +
-  annotate("segment", x = B_X + 0.34, xend = 0.95, y = hB[2], yend = hB[2],
-           arrow = arrow(length = unit(0.11, "cm"), type = "closed"),
-           linewidth = 0.5, colour = COL_COMPOSITE, linetype = "22") +
   # header and footer text kept clear of the drawn objects (canopy tops 2.54,
   # building top 2.57; feet at GY + 0.03) — Prof Zhang's round, 2026-08-20
   annotate("text", x = -3.28, y = 3.22, hjust = 0, size = 2.8, family = "Helvetica",
@@ -264,13 +278,12 @@ p_scene <- ggplot() +
   annotate("text", x = 3.28, y = 3.22, hjust = 1, size = 2.8, family = "Helvetica",
            fontface = "bold", colour = "grey20", label = "composite side") +
   annotate("text", x = 0, y = 2.92, size = 2.5, family = "Helvetica", fontface = "italic",
-           colour = "grey30", label = "one seat, one sound field") +
+           colour = "grey30", label = "one experience, one binaural record") +
   annotate("text", x = -0.72, y = GY - 0.46, hjust = 1, size = 2.7, family = "Helvetica",
            lineheight = 0.9, label = "A  faces the scene\nfNIRS + eye-tracker") +
   annotate("text", x = 0.72, y = GY - 0.46, hjust = 0, size = 2.7, family = "Helvetica",
            lineheight = 0.9, label = "B  eyes closed\nbinaural recorder") +
   scale_colour_manual(values = c(A = COL_A, B = COL_B), guide = "none") +
-  scale_fill_manual(values = c(A = COL_A, B = COL_B), guide = "none") +
   # clip off: A's footer line starts ~0.1 unit left of the x window at this
   # panel scale (fixed-pt text, smaller mm-per-unit) and must not lose its "f"
   coord_fixed(ratio = 1, xlim = c(-3.35, 3.35), ylim = c(SCENE_Y0, SCENE_Y1),
@@ -282,21 +295,17 @@ p_scene <- ggplot() +
 # Each overview block carries the same four segments as the magnified block
 # below it — baseline, exposure, ratings, and the 120-s transition to the next
 # block (drawn after blocks 1–5; no transition follows the sixth).
-# Colour logic (Prof Zhang's round, 2026-08-28): each side's blocks are tints of
-# its own colour — light for the masked baseline and the ratings, medium for the
-# exposure — natural green, composite yellow; transitions are white gaps. The
-# partners' lanes below are framed: A's in light green over the whole span it
-# covers (unfilled through the ratings, where nothing is recorded but A rates),
-# B's in light grey.
-tint <- function(col, f) {
-  m <- grDevices::col2rgb(col)
-  grDevices::rgb(255 - f * (255 - m[1, ]), 255 - f * (255 - m[2, ]), 255 - f * (255 - m[3, ]),
-                 maxColorValue = 255)
-}
-N_LIGHT <- tint(COL_NATURAL, 0.30);   N_MID <- tint(COL_NATURAL, 0.72)
-C_LIGHT <- tint(COL_COMPOSITE, 0.30); C_MID <- tint(COL_COMPOSITE, 0.72)
-LANE_A_FILL <- tint(COL_NATURAL, 0.16); LANE_A_LINE <- tint(COL_NATURAL, 0.85)
-LANE_B_FILL <- "grey92";                LANE_B_LINE <- "grey45"
+# Colour logic (Prof Zhang's rounds, 2026-08-28/29): each side's blocks are
+# light for the masked baseline and the ratings (panel b's side background) and
+# medium for the exposure — natural green, composite yellow; transitions are
+# white gaps. The partners' lanes below are framed: A's white with a black frame
+# over the whole span it covers, a thin divider marking where the recording ends
+# and A's ratings begin; B's light grey.
+# Pale segments take panel b's side backgrounds; the exposure a medium tint.
+N_LIGHT <- BG_NAT;  N_MID <- tint(COL_NATURAL, 0.72)
+C_LIGHT <- BG_COMP; C_MID <- tint(COL_COMPOSITE, 0.72)
+LANE_A_FILL <- "white";  LANE_A_LINE <- "black"     # A's lane: white, black frame
+LANE_B_FILL <- "grey92"; LANE_B_LINE <- "grey45"
 LANE_LW <- 0.45 * 0.70                                 # 70% of the earlier outline
 unit_w <- 2.85; base_w <- 0.9; expo_w <- 0.9; quest_w <- 0.6; gap_w <- 0.45
 units <- tibble(idx = 1:6, side = rep(c("Natural side", "Composite side"), 3)) %>%
@@ -348,9 +357,12 @@ p_proto <- ggplot() +
   geom_rect(data = lanes, aes(xmin = x0, xmax = x1, ymin = y0, ymax = y1, fill = I(fill)),
             colour = NA) +
   # A's frame spans the whole period A is engaged (baseline to the end of the
-  # block ratings); the ratings part stays unfilled (Prof Zhang, 2026-08-20/28).
+  # block ratings); a thin line separates the recorded exposure from the
+  # ratings (Prof Zhang, 2026-08-20/28/29).
   annotate("rect", xmin = 0, xmax = 12.9, ymin = lanes$y0[1], ymax = lanes$y1[1],
            fill = NA, colour = LANE_A_LINE, linewidth = LANE_LW) +
+  annotate("segment", x = 10.0, xend = 10.0, y = lanes$y0[1], yend = lanes$y1[1],
+           colour = "black", linewidth = LANE_LW) +
   annotate("rect", xmin = 5.0, xmax = 10.0, ymin = lanes$y0[2], ymax = lanes$y1[2],
            fill = NA, colour = LANE_B_LINE, linewidth = LANE_LW) +
   geom_text(data = lanes, aes(x = x0 + 0.18, y = (y0 + y1) / 2, label = label),
