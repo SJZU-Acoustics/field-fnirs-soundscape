@@ -184,26 +184,27 @@ chairs <- bind_rows(chair_path(A_X, -1, "A"), chair_path(B_X, 1, "B"),
 # Person colours (Prof Zhang's rounds, 2026-08-28/29): A, the measured partner,
 # a white figure with a black edge; B grey. Every instrument is drawn in black.
 COL_A <- "white"; COL_B <- "grey55"; EDGE_LW <- 0.55
-# A's headgear — what the Methods list: the fNIRS cap as one black line hugging
-# the scalp from brow to nape, and the eye-tracking glasses (a lens before the
-# open eye with a temple arm back to the ear).
-cap     <- arc(hA[1], hA[2], R_H + 0.065, -10, 150, "cap")   # a hair off the head's own outline
-eye_A   <- tibble(x = hA[1] - R_H + 0.055, y = hA[2])
-lens    <- tibble(xmin = hA[1] - R_H - 0.10, xmax = hA[1] - R_H - 0.01,
-                  ymin = hA[2] - 0.065, ymax = hA[2] + 0.07)
-temple  <- tibble(x = hA[1] - R_H - 0.01, xend = hA[1],
-                  y = hA[2] + 0.06, yend = hA[2] + 0.06)
-# B — eyes closed (a lowered eyelid); the binaural recording as an earpiece at
-# the ear, a cable hanging down the front, and the small black recorder on the
-# lap by B's hand (no band over the head, no gaze line).
+# A's headgear, replicating Prof Zhang's sketch (2026-08-31): the fNIRS cap one
+# thin black arc a hair off the head's outline; the eye-tracking glasses a
+# small square lens straddling the front of the face, the open eye a dot inside
+# the lens, and a short temple stub.
+cap      <- arc(hA[1], hA[2], R_H + 0.05, -10, 150, "cap")
+lens     <- tibble(xmin = hA[1] - 0.205, xmax = hA[1] - 0.115,
+                   ymin = hA[2] - 0.03, ymax = hA[2] + 0.05)
+eye_A    <- tibble(x = hA[1] - 0.145, y = hA[2] + 0.01)
+temple   <- tibble(x = hA[1] - 0.115, xend = hA[1] + 0.005,
+                   y = hA[2] + 0.015, yend = hA[2] + 0.015)
+# B — eyes closed (a lowered lash line) and the binaural chain: an earpiece at
+# the ear, a cable hanging in a smooth bow to the small black recorder on the
+# lap by B's hand (no band over the head).
 earpiece <- tibble(x = hB[1] - 0.02, y = hB[2] - 0.02)
-lid      <- arc(hB[1] + R_H - 0.065, hB[2] + 0.045, 0.05, 200, 340, "lid")
+lid      <- arc(hB[1] + 0.10, hB[2] + 0.045, 0.045, 195, 345, "lid")
 recorder <- tibble(xmin = B_X + 0.26 * S, xmax = B_X + 0.38 * S,
                    ymin = GY + 0.53 * S, ymax = GY + 0.61 * S)
-cable    <- tibble(x = c(earpiece$x, hB[1] - 0.01, hB[1] + 0.01, hB[1] + 0.07, hB[1] + 0.17,
-                         hB[1] + 0.27, B_X + 0.30 * S),
-                   y = c(earpiece$y, hB[2] - 0.12, hB[2] - 0.28, hB[2] - 0.46, hB[2] - 0.62,
-                         hB[2] - 0.74, GY + 0.61 * S))
+cb       <- tibble(x = c(earpiece$x, 0.325, 0.375, 0.470, 0.580, 0.665,
+                         (recorder$xmin + recorder$xmax) / 2),
+                   y = c(earpiece$y, 1.86, 1.68, 1.48, 1.30, 1.19, recorder$ymax))
+cable    <- as_tibble(as.data.frame(spline(cb$x, cb$y, n = 120, method = "natural")))
 # The pair swap roles after the six blocks: a two-headed arc between the heads.
 swap    <- arc(0, 1.918, 0.572, 50.6, 129.4, "swap", n = 60)
 
@@ -249,17 +250,18 @@ p_scene <- ggplot() +
   geom_polygon(data = filter(heads, id == "B"), aes(x, y), fill = COL_B, colour = NA) +
   geom_polygon(data = filter(heads, id == "A"), aes(x, y), fill = COL_A, colour = "black",
                linewidth = 0.5) +
-  # A: open eye behind the eye-tracking glasses, the fNIRS cap as one black line
-  geom_point(data = eye_A, aes(x, y), size = 0.65, colour = "black") +
-  geom_segment(data = temple, aes(x = x, y = y, xend = xend, yend = yend),
-               colour = "black", linewidth = 0.5) +
-  geom_rect(data = lens, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-            fill = alpha("white", 0.65), colour = "black", linewidth = 0.45) +
+  # A: the cap arc, the square lens of the eye-tracking glasses with the open
+  # eye inside, and a short temple stub — all in black
   geom_path(data = cap, aes(x, y), colour = "black", linewidth = 0.7) +
-  # B: eyes closed; earpiece, cable and recorder in black
-  geom_path(data = lid, aes(x, y), colour = "grey10", linewidth = 0.55) +
+  geom_rect(data = lens, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = NA, colour = "black", linewidth = 0.4) +
+  geom_segment(data = temple, aes(x = x, y = y, xend = xend, yend = yend),
+               colour = "black", linewidth = 0.4) +
+  geom_point(data = eye_A, aes(x, y), size = 0.3, colour = "black") +
+  # B: the closed eye (a lowered lash line), earpiece, cable, recorder
+  geom_path(data = lid, aes(x, y), colour = "grey10", linewidth = 0.4) +
   geom_path(data = cable, aes(x, y), colour = "black", linewidth = 0.45) +
-  geom_point(data = earpiece, aes(x, y), size = 1.2, colour = "black") +
+  geom_point(data = earpiece, aes(x, y), size = 0.8, colour = "black") +
   geom_rect(data = recorder, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
             fill = "black", colour = NA) +
   # roles swap after the six blocks (three per side)
@@ -267,10 +269,6 @@ p_scene <- ggplot() +
             arrow = arrow(ends = "both", length = unit(0.10, "cm"), type = "closed")) +
   annotate("text", x = 0, y = 2.64, size = 2.5, family = "Helvetica",
            colour = "grey30", label = "swap roles") +
-  # what each faces
-  annotate("segment", x = A_X - 0.34, xend = -0.95, y = hA[2], yend = hA[2],
-           arrow = arrow(length = unit(0.11, "cm"), type = "closed"),
-           linewidth = 0.5, colour = COL_NATURAL) +
   # header and footer text kept clear of the drawn objects (canopy tops 2.54,
   # building top 2.57; feet at GY + 0.03) — Prof Zhang's round, 2026-08-20
   annotate("text", x = -3.28, y = 3.22, hjust = 0, size = 2.8, family = "Helvetica",
@@ -298,15 +296,14 @@ p_scene <- ggplot() +
 # Colour logic (Prof Zhang's rounds, 2026-08-28/29): each side's blocks are
 # light for the masked baseline and the ratings (panel b's side background) and
 # medium for the exposure — natural green, composite yellow; transitions are
-# white gaps. The partners' lanes below are framed: A's white with a black frame
-# over the whole span it covers, a thin divider marking where the recording ends
-# and A's ratings begin; B's light grey.
+# white gaps. Below, one row per instrument marks what it covers, each box
+# white with a black frame (Prof Zhang's sketch, 2026-08-31).
 # Pale segments take panel b's side backgrounds; the exposure a medium tint.
 N_LIGHT <- BG_NAT;  N_MID <- tint(COL_NATURAL, 0.72)
 C_LIGHT <- BG_COMP; C_MID <- tint(COL_COMPOSITE, 0.72)
-LANE_A_FILL <- "white";  LANE_A_LINE <- "black"     # A's lane: white, black frame
-LANE_B_FILL <- "grey92"; LANE_B_LINE <- "grey45"
-LANE_LW <- 0.45 * 0.70                                 # 70% of the earlier outline
+# Coverage rows (Prof Zhang's sketch, 2026-08-31): all boxes white with a black
+# frame; the frame keeps 70% of the earlier outline.
+LANE_LW <- 0.45 * 0.70
 unit_w <- 2.85; base_w <- 0.9; expo_w <- 0.9; quest_w <- 0.6; gap_w <- 0.45
 units <- tibble(idx = 1:6, side = rep(c("Natural side", "Composite side"), 3)) %>%
   mutate(x0 = (idx - 1) * unit_w)
@@ -332,11 +329,15 @@ mag <- tibble(part = c("baseline", "exposure", "ratings", "gap"),
               fill = c(N_LIGHT, N_MID, N_LIGHT, "white"),
               label = c("masked\nbaseline 60 s", "exposure\n60 s", "block\nratings",
                         "120 s to\nnext block"))
-lanes <- tibble(y0 = c(PROTO_Y$laneA[1], PROTO_Y$laneB[1]),
-                y1 = c(PROTO_Y$laneA[2], PROTO_Y$laneB[2]),
-                x0 = c(0, 5.0), x1 = c(10.0, 10.0),
-                fill = c(LANE_A_FILL, LANE_B_FILL),
-                label = c("A   fNIRS + eye-tracking", "B   binaural recording"))
+# Instrument-coverage rows: A's fNIRS spans the baseline and the exposure, the
+# eye-tracking the exposure, the scales the ratings; B's binaural recording
+# covers the exposure. Three rows stack over the two lanes' old span
+# (0.10–1.02), so the window and the b–c alignment stand.
+lanes <- tibble(x0 = c(0,    5.0,            10.0,     5.0),
+                x1 = c(10.0, 10.0,           12.9,     10.0),
+                y0 = c(0.74, 0.42,           0.42,     0.10),
+                y1 = c(1.02, 0.70,           0.70,     0.38),
+                label = c("fNIRS", "eye-tracking", "scales", "binaural rec."))
 p_proto <- ggplot() +
   geom_rect(data = rects, aes(xmin = x0, xmax = x0 + w, ymin = STRIP_Y[1], ymax = STRIP_Y[2],
                               fill = I(fill)), colour = "black", linewidth = 0.3) +
@@ -354,19 +355,16 @@ p_proto <- ggplot() +
             colour = "black", linewidth = 0.35) +
   geom_text(data = mag, aes(x = (x0 + x1) / 2, y = (y0 + y1) / 2, label = label),
             size = 2.7, family = "Helvetica", lineheight = 0.85) +
-  geom_rect(data = lanes, aes(xmin = x0, xmax = x1, ymin = y0, ymax = y1, fill = I(fill)),
-            colour = NA) +
-  # A's frame spans the whole period A is engaged (baseline to the end of the
-  # block ratings); a thin line separates the recorded exposure from the
-  # ratings (Prof Zhang, 2026-08-20/28/29).
-  annotate("rect", xmin = 0, xmax = 12.9, ymin = lanes$y0[1], ymax = lanes$y1[1],
-           fill = NA, colour = LANE_A_LINE, linewidth = LANE_LW) +
-  annotate("segment", x = 10.0, xend = 10.0, y = lanes$y0[1], yend = lanes$y1[1],
-           colour = "black", linewidth = LANE_LW) +
-  annotate("rect", xmin = 5.0, xmax = 10.0, ymin = lanes$y0[2], ymax = lanes$y1[2],
-           fill = NA, colour = LANE_B_LINE, linewidth = LANE_LW) +
-  geom_text(data = lanes, aes(x = x0 + 0.18, y = (y0 + y1) / 2, label = label),
-            size = 2.7, family = "Helvetica", hjust = 0) +
+  geom_rect(data = lanes, aes(xmin = x0, xmax = x1, ymin = y0, ymax = y1),
+            fill = "white", colour = "black", linewidth = LANE_LW) +
+  geom_text(data = lanes, aes(x = (x0 + x1) / 2, y = (y0 + y1) / 2, label = label),
+            size = 2.7, family = "Helvetica") +
+  # the row letters sit just left of the plot window (clip off), centred on A's
+  # two rows and on B's row, so the x window and the b–c alignment stand
+  annotate("text", x = -0.18, y = 0.72, label = "A", size = 3.0, hjust = 1,
+           family = "Helvetica") +
+  annotate("text", x = -0.18, y = 0.24, label = "B", size = 3.0, hjust = 1,
+           family = "Helvetica") +
   coord_fixed(ratio = PROTO_Y$ratio, xlim = c(-0.25, 16.90), ylim = PROTO_Y$lim,
               expand = FALSE, clip = "off") +
   theme_void(base_family = "Helvetica") +
